@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 interface CanvasProps {
   onSolve: (imageData: string) => void;
   onStartTutor: (imageData: string) => void;
+  onStartCoach: (imageData: string) => void;
   onUpdateCanvas?: () => string | null; // Callback to get current canvas image
   isProcessing: boolean;
 }
@@ -18,7 +19,7 @@ const DRAWING_COLORS = {
   orange: '#FF6600',    // Bright orange
 };
 
-export default function Canvas({ onSolve, onStartTutor, onUpdateCanvas, isProcessing }: CanvasProps) {
+export default function Canvas({ onSolve, onStartTutor, onStartCoach, onUpdateCanvas, isProcessing }: CanvasProps) {
   // Expose function to get current canvas image
   const getCanvasImage = useCallback(() => {
     const fabricCanvas = fabricCanvasRef.current;
@@ -491,6 +492,24 @@ export default function Canvas({ onSolve, onStartTutor, onUpdateCanvas, isProces
           title="Start Socratic tutor session"
         >
           {isProcessing ? 'Starting...' : 'Start Tutor'}
+        </button>
+        <button
+          onClick={() => {
+            const fabricCanvas = fabricCanvasRef.current;
+            if (!fabricCanvas) return;
+            const dataURL = fabricCanvas.toDataURL({
+              format: 'png',
+              quality: 1,
+              multiplier: 1,
+            });
+            const base64 = dataURL.split(',')[1] || dataURL;
+            onStartCoach(base64);
+          }}
+          disabled={isProcessing}
+          className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          title="Start Coach with Google Gemini (streaming)"
+        >
+          {isProcessing ? 'Starting...' : 'Start Coach'}
         </button>
       </div>
     </div>

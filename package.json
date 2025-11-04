@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@vercel/node": "^5.5.4",
     "fabric": "^6.7.1",
     "firebase": "^12.5.0",
