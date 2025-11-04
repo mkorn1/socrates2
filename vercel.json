@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/solve.ts": {
+      "runtime": "@vercel/node"
+    }
+  }
+}
