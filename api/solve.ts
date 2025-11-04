@@ -74,7 +74,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await response.json();
     const message = data.choices[0]?.message?.content || 'No response from AI';
 
-    return res.status(200).json({ message });
+    // Log the solution to console instead of returning it
+    console.log('=== Problem Solver Output ===');
+    console.log(message);
+    console.log('============================');
+
+    return res.status(200).json({ 
+      message: 'Solution processed. Check console for output.',
+      logged: true 
+    });
   } catch (error: any) {
     console.error('Error processing request:', error);
     return res.status(500).json({

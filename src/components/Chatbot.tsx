@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { InlineMath, BlockMath } from 'react-katex';
+import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
 interface Message {
@@ -14,15 +14,31 @@ interface ChatbotProps {
   onClose: () => void;
   messages: Message[];
   isLoading: boolean;
+  onSendMessage?: (message: string) => void;
 }
 
-export default function Chatbot({ isOpen, onClose, messages, isLoading }: ChatbotProps) {
+export default function Chatbot({ isOpen, onClose, messages, isLoading, onSendMessage }: ChatbotProps) {
   const [isMinimized, setIsMinimized] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  const handleSend = () => {
+    if (!inputValue.trim() || isLoading || !onSendMessage) return;
+    onSendMessage(inputValue.trim());
+    setInputValue('');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -114,19 +130,34 @@ export default function Chatbot({ isOpen, onClose, messages, isLoading }: Chatbo
             return <span key={idx}>{part}</span>;
           } else if (part.type === 'block') {
             try {
+              const html = katex.renderToString(part.content.trim(), {
+                throwOnError: false,
+                displayMode: true,
+              });
               return (
-                <div key={idx} className="my-2">
-                  <BlockMath math={part.content} />
-                </div>
+                <div 
+                  key={idx} 
+                  className="my-2 overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
               );
             } catch (e) {
-              return <span key={idx}>$${part.content}$$</span>;
+              return <span key={idx} className="text-red-400">$${part.content}$$</span>;
             }
           } else {
             try {
-              return <InlineMath key={idx} math={part.content} />;
+              const html = katex.renderToString(part.content.trim(), {
+                throwOnError: false,
+                displayMode: false,
+              });
+              return (
+                <span 
+                  key={idx}
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              );
             } catch (e) {
-              return <span key={idx}>${part.content}$</span>;
+              return <span key={idx} className="text-red-400">${part.content}$</span>;
             }
           }
         })}
@@ -142,7 +173,7 @@ export default function Chatbot({ isOpen, onClose, messages, isLoading }: Chatbo
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-blue-600 text-white rounded-t-lg">
-        <h3 className="font-semibold">AI Math Tutor</h3>
+        <h3 className="font-semibold">Socratic Tutor</h3>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsMinimized(!isMinimized)}
@@ -167,7 +198,7 @@ export default function Chatbot({ isOpen, onClose, messages, isLoading }: Chatbo
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && !isLoading && (
               <div className="text-gray-400 text-sm">
-                Click "Solve Problem" to get step-by-step solutions!
+                Start a conversation with your tutor! Share a problem or ask a question.
               </div>
             )}
             {messages.map((message) => (
@@ -193,13 +224,38 @@ export default function Chatbot({ isOpen, onClose, messages, isLoading }: Chatbo
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    <span className="ml-2 text-gray-300">Analyzing your problem...</span>
+                    <span className="ml-2 text-gray-300">Thinking...</span>
                   </div>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Input Area */}
+          {onSendMessage && (
+            <div className="border-t border-gray-700 p-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your response..."
+                  disabled={isLoading}
+                  className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

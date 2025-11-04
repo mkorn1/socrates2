@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas as FabricCanvas, FabricImage, PencilBrush } from 'fabric';
 import type { Canvas as FabricCanvasType } from 'fabric';
 import { useAuthStore } from '../store/authStore';
 
 interface CanvasProps {
   onSolve: (imageData: string) => void;
+  onStartTutor: (imageData: string) => void;
+  onUpdateCanvas?: () => string | null; // Callback to get current canvas image
   isProcessing: boolean;
 }
 
@@ -16,7 +18,33 @@ const DRAWING_COLORS = {
   orange: '#FF6600',    // Bright orange
 };
 
-export default function Canvas({ onSolve, isProcessing }: CanvasProps) {
+export default function Canvas({ onSolve, onStartTutor, onUpdateCanvas, isProcessing }: CanvasProps) {
+  // Expose function to get current canvas image
+  const getCanvasImage = useCallback(() => {
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas) return null;
+    const dataURL = fabricCanvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 1,
+    });
+    return dataURL.split(',')[1] || dataURL;
+  }, []);
+
+  // Expose getCanvasImage to parent if callback provided
+  useEffect(() => {
+    if (onUpdateCanvas) {
+      // Store the function reference (this is a simple approach)
+      // In a more complex setup, you might use useImperativeHandle
+      (window as any).__getCanvasImage = getCanvasImage;
+    }
+    return () => {
+      // Cleanup
+      if ((window as any).__getCanvasImage) {
+        delete (window as any).__getCanvasImage;
+      }
+    };
+  }, [onUpdateCanvas, getCanvasImage]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<FabricCanvasType | null>(null);
   const [selectedColor, setSelectedColor] = useState<keyof typeof DRAWING_COLORS>('cyan');
@@ -437,13 +465,34 @@ export default function Canvas({ onSolve, isProcessing }: CanvasProps) {
 
       <canvas ref={canvasRef} className="absolute inset-0" />
 
-      <button
-        onClick={handleSolve}
-        disabled={isProcessing}
-        className="absolute bottom-6 right-6 z-10 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-      >
-        {isProcessing ? 'Processing...' : 'Solve Problem'}
-      </button>
+      <div className="absolute bottom-6 right-6 z-10 flex flex-col space-y-3">
+        <button
+          onClick={handleSolve}
+          disabled={isProcessing}
+          className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          title="Solve problem (outputs to console)"
+        >
+          {isProcessing ? 'Processing...' : 'Solve Problem'}
+        </button>
+        <button
+          onClick={() => {
+            const fabricCanvas = fabricCanvasRef.current;
+            if (!fabricCanvas) return;
+            const dataURL = fabricCanvas.toDataURL({
+              format: 'png',
+              quality: 1,
+              multiplier: 1,
+            });
+            const base64 = dataURL.split(',')[1] || dataURL;
+            onStartTutor(base64);
+          }}
+          disabled={isProcessing}
+          className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          title="Start Socratic tutor session"
+        >
+          {isProcessing ? 'Starting...' : 'Start Tutor'}
+        </button>
+      </div>
     </div>
   );
 }
