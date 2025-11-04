@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    // Call OpenAI GPT-4 Vision API
+    // Call OpenAI GPT-4o API (multimodal model for vision and math solving)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4-vision-preview',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ],
           },
         ],
-        max_tokens: 1000,
+        max_tokens: 2000,
       }),
     });
 

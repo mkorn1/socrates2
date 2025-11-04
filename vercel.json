@@ -1,7 +1,14 @@
 {
-  "functions": {
-    "api/solve.ts": {
-      "runtime": "@vercel/node"
+  "buildCommand": "NODE_ENV=production npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "vite --host",
+  "rewrites": [
+    {
+      "source": "/((?!api|_next|@|src|node_modules|assets|.*\\.[a-z0-9]+$).*)",
+      "destination": "/index.html"
     }
+  ],
+  "env": {
+    "NODE_ENV": "production"
   }
 }
