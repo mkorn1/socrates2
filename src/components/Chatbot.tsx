@@ -43,121 +43,138 @@ export default function Chatbot({ isOpen, onClose, messages, isLoading, onSendMe
   if (!isOpen) return null;
 
   const renderMessage = (content: string) => {
-    // Simple approach: split by markdown-style code blocks first, then handle math
-    // This handles block math ($$...$$) and inline math ($...$)
+    // Improved KaTeX parsing: handles block math ($$...$$) and inline math ($...$)
     const parts: (string | { type: 'block' | 'inline'; content: string })[] = [];
-    let remaining = content;
-
-    // Process block math first ($$...$$) - these are higher priority
+    
+    // Track positions to avoid overlapping matches
+    const processedRanges: Array<{ start: number; end: number }> = [];
+    
+    // First, find all block math expressions ($$...$$)
     const blockMathRegex = /\$\$([\s\S]*?)\$\$/g;
-    const blockMatches: { index: number; length: number; content: string }[] = [];
+    const blockMatches: Array<{ index: number; length: number; content: string; end: number }> = [];
     let match;
     
-    // Reset regex
     blockMathRegex.lastIndex = 0;
-    while ((match = blockMathRegex.exec(remaining)) !== null) {
+    while ((match = blockMathRegex.exec(content)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
       blockMatches.push({
-        index: match.index,
+        index: start,
         length: match[0].length,
-        content: match[1],
+        content: match[1].trim(),
+        end,
       });
+      processedRanges.push({ start, end });
     }
 
-    // Process inline math ($...$) - but avoid matching block math delimiters
-    // Use a simpler regex and filter out matches inside block math regions
-    const inlineMathRegex = /\$([^\$\n]+?)\$/g;
-    const inlineMatches: { index: number; length: number; content: string }[] = [];
+    // Then, find inline math ($...$) that aren't part of block math
+    const inlineMathRegex = /\$([^\$]+?)\$/g;
+    const inlineMatches: Array<{ index: number; length: number; content: string; end: number }> = [];
     
-    // Reset regex
     inlineMathRegex.lastIndex = 0;
-    while ((match = inlineMathRegex.exec(remaining)) !== null) {
-      // Check if this is inside a block math region or adjacent to $$
-      const prevChar = remaining[match.index - 1];
-      const nextCharAfterMatch = remaining[match.index + match[0].length];
+    while ((match = inlineMathRegex.exec(content)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
       
-      if (prevChar === '$' || nextCharAfterMatch === '$') {
-        continue; // Skip if part of block math delimiter
+      // Skip if this is inside a block math region
+      const isInsideBlock = processedRanges.some(
+        (range) => start >= range.start && end <= range.end
+      );
+      
+      // Skip if adjacent to another $ (part of $$)
+      const prevChar = content[start - 1];
+      const nextChar = content[end];
+      if (prevChar === '$' || nextChar === '$') {
+        continue;
       }
       
-      // Check if this is inside a block math region
-      const isInsideBlock = blockMatches.some(
-        (bm) => match.index >= bm.index && match.index < bm.index + bm.length
-      );
-      if (!isInsideBlock) {
+      if (!isInsideBlock && match[1].trim()) {
         inlineMatches.push({
-          index: match.index,
+          index: start,
           length: match[0].length,
-          content: match[1],
+          content: match[1].trim(),
+          end,
         });
       }
     }
 
-    // Combine and sort all matches
+    // Combine all matches and sort by position
     const allMatches = [
       ...blockMatches.map((m) => ({ ...m, type: 'block' as const })),
       ...inlineMatches.map((m) => ({ ...m, type: 'inline' as const })),
     ].sort((a, b) => a.index - b.index);
 
+    // If no math found, return plain text
     if (allMatches.length === 0) {
-      return <div className="whitespace-pre-wrap">{content}</div>;
+      return <div className="whitespace-pre-wrap break-words">{content}</div>;
     }
 
+    // Build result array with text and math parts
     const result: (string | { type: 'block' | 'inline'; content: string })[] = [];
     let currentIndex = 0;
 
     for (const match of allMatches) {
+      // Add text before this match
       if (match.index > currentIndex) {
-        const textPart = remaining.slice(currentIndex, match.index);
+        const textPart = content.slice(currentIndex, match.index);
         if (textPart) {
           result.push(textPart);
         }
       }
+      // Add math part
       result.push({ type: match.type, content: match.content });
       currentIndex = match.index + match.length;
     }
 
-    if (currentIndex < remaining.length) {
-      const textPart = remaining.slice(currentIndex);
+    // Add remaining text after last match
+    if (currentIndex < content.length) {
+      const textPart = content.slice(currentIndex);
       if (textPart) {
         result.push(textPart);
       }
     }
 
+    // Render the parts
     return (
-      <div className="whitespace-pre-wrap">
+      <div className="whitespace-pre-wrap break-words">
         {result.map((part, idx) => {
           if (typeof part === 'string') {
             return <span key={idx}>{part}</span>;
           } else if (part.type === 'block') {
             try {
-              const html = katex.renderToString(part.content.trim(), {
+              const html = katex.renderToString(part.content, {
                 throwOnError: false,
                 displayMode: true,
+                strict: false,
               });
               return (
                 <div 
                   key={idx} 
-                  className="my-2 overflow-x-auto"
+                  className="my-2 overflow-x-auto katex-block"
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               );
             } catch (e) {
-              return <span key={idx} className="text-red-400">$${part.content}$$</span>;
+              console.warn('KaTeX block math error:', e, part.content);
+              return <span key={idx} className="text-yellow-400">$${part.content}$$</span>;
             }
           } else {
             try {
-              const html = katex.renderToString(part.content.trim(), {
+              const html = katex.renderToString(part.content, {
                 throwOnError: false,
                 displayMode: false,
+                strict: false,
               });
               return (
                 <span 
                   key={idx}
+                  className="katex-inline"
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               );
             } catch (e) {
-              return <span key={idx} className="text-red-400">${part.content}$</span>;
+              console.warn('KaTeX inline math error:', e, part.content);
+              return <span key={idx} className="text-yellow-400">${part.content}$</span>;
             }
           }
         })}

@@ -17,3 +17,32 @@ body {
   overflow: hidden;
   background-color: #111827;
 }
+
+/* KaTeX styling for dark theme */
+.katex {
+  color: inherit;
+}
+
+.katex .mathnormal {
+  color: inherit;
+}
+
+.katex-block {
+  text-align: center;
+}
+
+.katex-inline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+/* Ensure KaTeX renders properly in dark message bubbles */
+.bg-gray-700 .katex,
+.bg-gray-700 .katex .mathnormal {
+  color: #e5e7eb; /* Light gray for dark background */
+}
+
+.bg-blue-600 .katex,
+.bg-blue-600 .katex .mathnormal {
+  color: #ffffff; /* White for blue background */
+}

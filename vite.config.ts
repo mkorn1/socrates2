@@ -37,6 +37,15 @@ export default defineConfig(({ mode }) => {
       port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
       host: '0.0.0.0',
       strictPort: false,
+      // Proxy API requests to Vercel dev server if running
+      // Note: For full API support, use 'npm run dev:vercel' instead
+      proxy: process.env.VITE_API_PROXY_URL ? {
+        '/api': {
+          target: process.env.VITE_API_PROXY_URL,
+          changeOrigin: true,
+          secure: false,
+        },
+      } : undefined,
     },
   }
 })
