@@ -1,3 +1,5 @@
+![Socrates](./socrates.png)
+
 # Math Problem Solver MVP
 
 A web-based application that enables middle school students to solve math problems by drawing them directly on an interactive full-screen canvas. The application uses GPT-4 Vision to analyze the problem and provides step-by-step solutions through a floating chatbot interface.
